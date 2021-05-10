@@ -105,6 +105,8 @@ struct aabb grid_span(struct aabb box)
     return box;
 }
 
+#if 0
+
 size_t multihash_get_span(struct multihash *h, struct aabb span, uint32_t *out)
 {
     size_t num = 0;
@@ -114,6 +116,7 @@ size_t multihash_get_span(struct multihash *h, struct aabb span, uint32_t *out)
         for(int y = span.min.y; y<=span.max.y; y++) {
             multihash_get_bitset(h, grid_location(x,y), set); 
         }
+
     for(int i = 0; i<16; i++) {
         uint32_t bitset = set[i];
         uint32_t mag = i<<6;
@@ -122,6 +125,63 @@ size_t multihash_get_span(struct multihash *h, struct aabb span, uint32_t *out)
             bitset &= (bitset - 1);
         }
     }
+    return num;
+}
+
+#endif
+
+size_t combine_sorted(uint32_t *a, size_t alen, uint32_t *b, size_t blen, uint32_t *out)
+{
+    size_t ac = 0, bc = 0, len = 0; 
+    while(ac<alen && bc<blen) {
+        if (a[ac] < b[bc])
+            out[len++] = a[ac++];
+        else
+        if (a[ac] > b[bc])
+            out[len++] = b[bc++];
+        else {
+            out[len++] = a[ac++];
+            bc++;
+        }
+    }
+    while(ac<alen)
+        out[len++] = a[ac++];
+
+    while(bc<blen)
+        out[len++] = b[bc++];
+    return len;
+}
+
+size_t merge_into(uint32_t *in, size_t inlen, uint32_t *out, size_t outlen)
+{
+    int end = inlen + outlen;
+    int inc = inlen - 1;
+    int outc = outlen - 1;
+
+    while(inc >= 0 && outc >= 0) {
+        if (in[inc] > out[outc]) 
+            out[--end] = in[inc--];    
+        else 
+            out[--end] = out[outc--];
+    }
+    while(inc>=0)
+        out[--end] = in[inc--];
+    while(outc>=0)
+        out[--end] = out[outc--];
+    return inlen+outlen;
+}
+
+size_t multihash_get_span(struct multihash *h, struct aabb span, uint32_t *out)
+{
+    size_t num = 0;
+    uint32_t temp[MAX_AABB];
+
+    for(int x = span.min.x; x<=span.max.x; x++)
+        for(int y = span.min.y; y<=span.max.y; y++) {
+            size_t len = multihash_get(h, grid_location(x,y), temp);
+            num = merge_into(temp, len, out, num);
+        }
+
     return num;
 }
 
@@ -171,7 +231,7 @@ int main()
 //#if 0
     for(i = 0; i<HASH_SIZE; i++) {
         //printf("slot %8d, key: %8d, val: %8d\n", i, map.key[i], map.val[i]);
-        printf("%8d %8x\n", map.val[i], map.key[i]);
+//        printf("%8x %8d\n", map.key[i], map.val[i]);
     }
 //#endif
 printf("%d\n", sizeof(keys) + sizeof(vals));

@@ -149,8 +149,8 @@ int main()
     struct hash bhash = hash_init(block_keys, block_vals, 1024);
 
     const int blocks = 512;
-    const int width = 120;
-    const int height = 60;
+    const int width = 60;
+    const int height = 40;
     int x = width/2;
     int y = height/2;
 
